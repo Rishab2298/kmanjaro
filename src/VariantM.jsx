@@ -720,10 +720,15 @@ function HowWeWorkM() {
   const [active, setActive]   = useState(0);
   const containerRef          = useRef(null);
   const [containerW, setContainerW] = useState(1200);
+  const touchStartX           = useRef(null);
   const total = PROCESS_STEPS.length;
 
-  // Card width: ~42% of container so 3 cards always visible; min 240, max 480
-  const cardW = Math.min(480, Math.max(240, containerW * 0.42));
+  const isMobile = containerW < 640;
+
+  // Mobile: near-full-width so only one card shows; Desktop: ~42% so 3 cards visible
+  const cardW = isMobile
+    ? containerW - 48
+    : Math.min(480, Math.max(240, containerW * 0.42));
 
   // Offset to center the active card in the container
   const trackOffset = (containerW / 2) - (cardW / 2) - (active * (cardW + GAP_C));
@@ -765,7 +770,15 @@ function HowWeWorkM() {
         </div>
 
         {/* ── Sliding track ── */}
-        <div ref={containerRef} className="relative overflow-hidden" style={{ paddingBottom: '8px' }}>
+        <div ref={containerRef} className="relative overflow-hidden" style={{ paddingBottom: '8px' }}
+          onTouchStart={e => { touchStartX.current = e.touches[0].clientX; }}
+          onTouchEnd={e => {
+            if (touchStartX.current === null) return;
+            const dx = e.changedTouches[0].clientX - touchStartX.current;
+            if (Math.abs(dx) > 40) goTo(active + (dx < 0 ? 1 : -1));
+            touchStartX.current = null;
+          }}
+        >
 
           {/* Gradient edge masks — stronger so adjacent cards bleed in nicely */}
           <div className="absolute inset-y-0 left-0 z-20 pointer-events-none" style={{ width: '10%', background: `linear-gradient(90deg, ${BG}, transparent)` }} />
@@ -784,7 +797,7 @@ function HowWeWorkM() {
               const dist     = Math.abs(i - active);
               const isActive = dist === 0;
               const isNear   = dist === 1;
-              const opacity  = isActive ? 1 : isNear ? 0.58 : 0.22;
+              const opacity  = isActive ? 1 : isMobile ? 0 : isNear ? 0.58 : 0.22;
               const scale    = isActive ? 1 : isNear ? 0.96 : 0.90;
 
               return (
@@ -929,8 +942,11 @@ function HowWeWorkM() {
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
 
+          {/* Mobile step counter */}
+          <span className="block text-center sm:hidden" style={{ ...JAKARTA, fontWeight: 500, fontSize: '12px', letterSpacing: '0.12em', color: TEAL }}>{active + 1} / {total}</span>
+
           {/* Step pills */}
-          <div className="flex items-center gap-2">
+          <div className="items-center hidden gap-2 sm:flex">
             {PROCESS_STEPS.map((s, i) => (
               <button key={i} onClick={() => goTo(i)}
                 style={{
